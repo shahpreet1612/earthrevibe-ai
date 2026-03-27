@@ -234,6 +234,11 @@ app.post('/api/test-reply', async (req, res) => {
   res.json(result);
 });
 
+// 8. Keep-alive endpoint for cron pings
+app.get('/api/ping', (req, res) => {
+  res.json({ status: 'alive', timestamp: new Date().toISOString() });
+});
+
 // ── Polling Engine ──────────────────────────────────
 const processedComments = new Set();
 
