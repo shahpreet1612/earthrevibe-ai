@@ -150,6 +150,8 @@ async function saveComment(data) {
       Reply3Score:   data.aiResult.replies[2].confidence,
       BestReplyIdx:  data.aiResult.best_reply_index,
       Status:        data.aiResult.auto_post_safe ? 'auto_posted' : 'pending',
+      ApprovedReply: data.aiResult.auto_post_safe ? data.aiResult.replies[data.aiResult.best_reply_index].reply : '',
+      ApprovedAt:    data.aiResult.auto_post_safe ? new Date().toISOString() : '',
       Timestamp:     new Date().toISOString(),
       Likes:         0
     }
