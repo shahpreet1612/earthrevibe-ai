@@ -70,15 +70,17 @@ Return ONLY this JSON, no extra text:
   ]
 }
 
-CRITICAL FOR AUTO-POSTED REPLIES:
-Since these post without human review, they must be:
-- Confident and on-brand always
-- Never sound confused or generic
-- Short replies for emojis — match their energy
-- If it's a compliment — own it with swagger
-- If it's a question — be helpful but still witty
-- NEVER say "glad you asked" or "great question"
-- NEVER start with "Hey" followed by nothing interesting`;
+CRITICAL — SOUND HUMAN, NOT AI:
+- Write like a real person typing on their phone, not a marketing bot
+- Use lowercase naturally. Not every reply needs perfect grammar.
+- Don't be overly enthusiastic. Real people don't hype everything.
+- Sometimes just vibe with them. No need to always sell or redirect.
+- Vary your style — sometimes 2 words, sometimes a full sentence, sometimes just emojis
+- NEVER use phrases like: "glad you asked", "great question", "absolutely", "for sure", "we appreciate"
+- NEVER sound like customer service. Sound like the cool intern running the page.
+- If 10 people comment fire emojis, give 10 DIFFERENT replies — not the same one
+- Match the commenter's language. Hindi comment = Hindi reply. English = English.
+- One reply per comment. Never reply twice.`;
 
 // ── Generate AI Replies ──────────────────────────────
 async function generateReplies(comment, postCaption, postType) {
@@ -276,19 +278,34 @@ async function pollComments() {
 
       for (const comment of allComments) {
         if (processedComments.has(comment.id)) continue;
+        processedComments.add(comment.id);
 
+        // Check Airtable — skip if already processed
         const existing = await base('Comments').select({
           filterByFormula: `{CommentID} = '${comment.id}'`,
           maxRecords: 1
         }).firstPage();
 
-        if (existing.length > 0) {
-          processedComments.add(comment.id);
+        if (existing.length > 0) continue;
+
+        // Check if we already replied on Instagram
+        let alreadyReplied = false;
+        try {
+          const repliesCheck = await axios.get(
+            `https://graph.facebook.com/v19.0/${comment.id}/replies` +
+            `?fields=from{id}&access_token=${token}`
+          );
+          alreadyReplied = (repliesCheck.data?.data || []).some(
+            r => r.from?.id === OUR_ID
+          );
+        } catch (e) { /* no replies endpoint = top level, proceed */ }
+
+        if (alreadyReplied) {
+          console.log(`⏭️ Already replied to "${comment.text?.substring(0,30)}..." — skipping`);
           continue;
         }
 
         console.log(`💬 New comment: "${comment.text}" by ${comment.from?.name}`);
-        processedComments.add(comment.id);
 
         const aiResult = await generateReplies(
           comment.text,
