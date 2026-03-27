@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
-const API = 'http://localhost:3001'
+const API = 'https://earthrevibe-ai.onrender.com'
 
 const priorityColor = {
   urgent: '#E24B4A', high: '#EF9F27', normal: '#1D9E75', skip: '#666'

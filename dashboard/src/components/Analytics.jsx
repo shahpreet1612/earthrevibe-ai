@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
-const API = 'http://localhost:3001'
+const API = 'https://earthrevibe-ai.onrender.com'
 const COLORS = ['#7c5cfc', '#34d399', '#fbbf24', '#f87171', '#60a5fa', '#c084fc', '#fb923c']
 
 const card = {
