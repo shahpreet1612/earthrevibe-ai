@@ -1,0 +1,331 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
+const Groq = require('groq-sdk');
+const Airtable = require('airtable');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// ── Clients ─────────────────────────────────────────
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY })
+  .base(process.env.AIRTABLE_BASE_ID);
+
+// ── Master Brand Voice Prompt ────────────────────────
+const BRAND_PROMPT = `You are the social media voice of Earth Revibe — a young Indian travel fashion brand. Clothes for people who actually go places.
+
+PERSONALITY: Witty, unexpected, culturally sharp. Think Zomato meets Mumbai Police meets Durex. The funniest 24-year-old in the room who also has the best fits. You are NOT a bot. You sound completely human.
+
+COMMENT LENGTH RULES:
+- Emoji only (🔥, 😍) → reply with emojis or 1-3 words max
+- One word ("nice", "wow") → 3-6 words, punchy
+- Short hype (under 8 words) → one sharp line, can be funny or sarcastic
+- Question or detailed comment → can be 1-2 sentences, witty and helpful
+- Mix it up — sometimes a one liner, sometimes a short paragraph
+- The goal is to sound human and unpredictable, not formulaic
+- NEVER write the same style twice in a row
+
+CREATIVITY RULES:
+- Do NOT just reference the post caption. Use your own wit and personality.
+- Think about what a funny person would say in that comment section — not what a brand would say
+- The best reply makes people screenshot it and show their friends
+- Surprise people. Say something they didn't expect.
+- Use Hinglish naturally when the comment is in Hindi or Hinglish
+- Reference travel, trips, places, adventures when it fits naturally — not forcefully
+
+RULES:
+- Never mention religion, caste, race, gender negatively
+- Never punch down at anyone
+- No generic CTAs like "check our page" or "visit our bio"
+- If someone is genuinely sad or going through something — be warm not witty
+- Do NOT start with the person's name — that's what bots do
+- Under 200 characters for most replies
+- Sound human. Sound real.
+
+EXAMPLES OF PERFECT REPLIES:
+- Comment: "🔥🔥🔥" → Reply: "🤝🔥"
+- Comment: "😍✨" → Reply: "✨ always"
+- Comment: "nice" → Reply: "wait till you see it in person"
+- Comment: "this is everything" → Reply: "and it packs light too 🎒"
+- Comment: "where is this from?" → Reply: "your next trip's wardrobe, link in bio 🌍"
+- Comment: "itna costly kyun" → Reply: "Leh ke tickets se sasta hai bhai 😭"
+- Comment: "bro this fit 🔥" → Reply: "the fit didn't ask for permission 🤙"
+- Comment: "Color of the tshirt looks amazing" → Reply: "right? it hits different in sunlight 🌅"
+
+TASK: Given a comment, generate exactly 3 reply options.
+
+Return ONLY this JSON, no extra text:
+{
+  "intent": "hype|question_price|question_size|question_buy|negative_price|negative_quality|sarcastic_user|love|brand_deal_hint|neutral|irrelevant",
+  "priority": "urgent|high|normal|skip",
+  "auto_post_safe": true or false,
+  "best_reply_index": 0,
+  "replies": [
+    {"tone": "unexpected_wit", "reply": "", "confidence": 0, "why": ""},
+    {"tone": "sarcastic_smart", "reply": "", "confidence": 0, "why": ""},
+    {"tone": "warm_helpful", "reply": "", "confidence": 0, "why": ""}
+  ]
+}
+
+CRITICAL FOR AUTO-POSTED REPLIES:
+Since these post without human review, they must be:
+- Confident and on-brand always
+- Never sound confused or generic
+- Short replies for emojis — match their energy
+- If it's a compliment — own it with swagger
+- If it's a question — be helpful but still witty
+- NEVER say "glad you asked" or "great question"
+- NEVER start with "Hey" followed by nothing interesting`;
+
+// ── Generate AI Replies ──────────────────────────────
+async function generateReplies(comment, postCaption, postType) {
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    max_tokens: 1000,
+    messages: [
+      { role: 'system', content: BRAND_PROMPT },
+      { role: 'user', content: `Post caption: "${postCaption}"
+Post type: ${postType}
+Comment to reply to: "${comment}"
+Generate 3 replies now. Return ONLY valid JSON, no extra text.` }
+    ]
+  });
+
+  const raw = response.choices[0].message.content
+    .trim()
+    .replace(/```json/g, '')
+    .replace(/```/g, '')
+    .trim();
+
+  return JSON.parse(raw);
+}
+
+// ── Save to Airtable ─────────────────────────────────
+async function saveComment(data) {
+  return await base('Comments').create([{
+    fields: {
+      CommentID:     data.commentId,
+      CommentText:   data.commentText,
+      AuthorName:    data.authorName,
+      PostCaption:   data.postCaption,
+      PostType:      data.postType,
+      Intent:        data.aiResult.intent,
+      Priority:      data.aiResult.priority,
+      AutoPostSafe:  data.aiResult.auto_post_safe,
+      Reply1:        data.aiResult.replies[0].reply,
+      Reply1Tone:    data.aiResult.replies[0].tone,
+      Reply1Score:   data.aiResult.replies[0].confidence,
+      Reply2:        data.aiResult.replies[1].reply,
+      Reply2Tone:    data.aiResult.replies[1].tone,
+      Reply2Score:   data.aiResult.replies[1].confidence,
+      Reply3:        data.aiResult.replies[2].reply,
+      Reply3Tone:    data.aiResult.replies[2].tone,
+      Reply3Score:   data.aiResult.replies[2].confidence,
+      BestReplyIdx:  data.aiResult.best_reply_index,
+      Status:        data.aiResult.auto_post_safe ? 'auto_posted' : 'pending',
+      Timestamp:     new Date().toISOString(),
+      Likes:         0
+    }
+  }]);
+}
+
+// ── Post Reply to Instagram ──────────────────────────
+async function postReply(commentId, replyText) {
+  const url = `https://graph.facebook.com/v19.0/${commentId}/replies`;
+  await axios.post(url, {
+    message: replyText,
+    access_token: process.env.INSTAGRAM_ACCESS_TOKEN
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// ROUTES
+// ═══════════════════════════════════════════════════
+
+// 1. Instagram webhook verification (one-time setup)
+app.get('/webhook', (req, res) => {
+  const VERIFY_TOKEN = 'earthrevibe_webhook_2024';
+  if (req.query['hub.verify_token'] === VERIFY_TOKEN) {
+    res.send(req.query['hub.challenge']);
+  } else {
+    res.sendStatus(403);
+  }
+});
+
+// 2. Receive new comments from Instagram
+app.post('/webhook', async (req, res) => {
+  res.sendStatus(200); // acknowledge immediately
+  try {
+    const entry = req.body.entry?.[0];
+    const change = entry?.changes?.[0];
+    if (change?.field !== 'comments') return;
+
+    const { id: commentId, text: commentText, from } = change.value;
+    console.log('📥 New comment:', commentText);
+
+    const aiResult = await generateReplies(commentText, 'Earth Revibe collab post', 'collab');
+    console.log('🤖 AI result:', aiResult.intent, '| Auto:', aiResult.auto_post_safe);
+
+    await saveComment({
+      commentId, commentText,
+      authorName: from?.name || 'Unknown',
+      postCaption: 'Earth Revibe collab post',
+      postType: 'collab',
+      aiResult
+    });
+
+    if (aiResult.auto_post_safe) {
+      const best = aiResult.replies[aiResult.best_reply_index].reply;
+      await postReply(commentId, best);
+      console.log('✅ Auto-posted:', best);
+    }
+  } catch (err) {
+    console.error('❌ Error:', err.message);
+  }
+});
+
+// 3. Dashboard — get all pending comments
+app.get('/api/comments', async (req, res) => {
+  const records = await base('Comments').select({
+    sort: [{ field: 'Timestamp', direction: 'desc' }],
+    maxRecords: 100
+  }).firstPage();
+  res.json(records.map(r => ({ id: r.id, ...r.fields })));
+});
+
+// 4. Dashboard — approve and post a reply
+app.post('/api/approve', async (req, res) => {
+  const { recordId, commentId, replyText } = req.body;
+  await postReply(commentId, replyText);
+  await base('Comments').update(recordId, {
+    Status: 'approved',
+    ApprovedReply: replyText,
+    ApprovedAt: new Date().toISOString()
+  });
+  res.json({ success: true });
+});
+
+// 5. Dashboard — skip/dismiss a comment
+app.post('/api/skip', async (req, res) => {
+  await base('Comments').update(req.body.recordId, { Status: 'skipped' });
+  res.json({ success: true });
+});
+
+// 6. Instagram analytics for dashboard
+app.get('/api/analytics', async (req, res) => {
+  const token = process.env.INSTAGRAM_ACCESS_TOKEN;
+  const pageId = process.env.INSTAGRAM_PAGE_ID;
+  const fields = 'followers_count,media_count,profile_picture_url,name,biography';
+  const { data } = await axios.get(
+    `https://graph.facebook.com/v19.0/${pageId}?fields=${fields}&access_token=${token}`
+  );
+  res.json(data);
+});
+
+// 7. Test endpoint — generate replies without a real comment
+app.post('/api/test-reply', async (req, res) => {
+  const { comment, caption, type } = req.body;
+  const result = await generateReplies(comment, caption || 'Earth Revibe post', type || 'collab');
+  res.json(result);
+});
+
+// ── Polling Engine ──────────────────────────────────
+const processedComments = new Set();
+
+async function pollComments() {
+  try {
+    const igId = process.env.INSTAGRAM_PAGE_ID;
+    const token = process.env.INSTAGRAM_ACCESS_TOKEN;
+
+    const mediaRes = await axios.get(
+      `https://graph.facebook.com/v19.0/${igId}/media` +
+      `?fields=id,caption,timestamp&limit=25&access_token=${token}`
+    );
+
+    const posts = mediaRes.data?.data || [];
+    console.log(`🔍 Checking ${posts.length} posts for new comments...`);
+
+    for (const post of posts) {
+      const commentsRes = await axios.get(
+        `https://graph.facebook.com/v19.0/${post.id}/comments` +
+        `?fields=id,text,from,timestamp,replies{id,text,from,timestamp}&access_token=${token}`
+      );
+
+      const comments = commentsRes.data?.data || [];
+      const OUR_ID = process.env.INSTAGRAM_PAGE_ID;
+      const allComments = [];
+
+      for (const comment of comments) {
+        // Never process our own comments
+        if (comment.from?.id === OUR_ID) continue;
+        allComments.push(comment);
+
+        if (comment.replies?.data) {
+          for (const reply of comment.replies.data) {
+            // Never process our own replies
+            if (reply.from?.id === OUR_ID) continue;
+            // Never process replies to our own comments
+            if (comment.from?.id === OUR_ID) continue;
+            allComments.push(reply);
+          }
+        }
+      }
+
+      for (const comment of allComments) {
+        if (processedComments.has(comment.id)) continue;
+
+        const existing = await base('Comments').select({
+          filterByFormula: `{CommentID} = '${comment.id}'`,
+          maxRecords: 1
+        }).firstPage();
+
+        if (existing.length > 0) {
+          processedComments.add(comment.id);
+          continue;
+        }
+
+        console.log(`💬 New comment: "${comment.text}" by ${comment.from?.name}`);
+        processedComments.add(comment.id);
+
+        const aiResult = await generateReplies(
+          comment.text,
+          post.caption || 'Earth Revibe post',
+          'instagram_post'
+        );
+
+        await saveComment({
+          commentId:   comment.id,
+          commentText: comment.text,
+          authorName:  comment.from?.name || comment.from?.username || 'Instagram User',
+          postCaption: post.caption || 'Earth Revibe post',
+          postType:    'instagram_post',
+          aiResult
+        });
+
+        if (aiResult.auto_post_safe) {
+          const best = aiResult.replies[aiResult.best_reply_index].reply;
+          await postReply(comment.id, best);
+          console.log(`✅ Auto-posted: "${best}"`);
+        } else {
+          console.log(`📋 Queued for approval — intent: ${aiResult.intent}`);
+        }
+
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+  } catch (err) {
+    console.error('❌ Poll error:', err.message);
+  }
+}
+
+// Start polling immediately, then every 2 minutes
+setTimeout(pollComments, 3000);
+setInterval(pollComments, 2 * 60 * 1000);
+console.log('🔄 Polling engine started — checking every 2 minutes');
+
+// ── Start server ─────────────────────────────────────
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`🚀 Server live on port ${PORT}`));
