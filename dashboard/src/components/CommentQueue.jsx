@@ -69,6 +69,15 @@ export default function CommentQueue() {
     load()
   }
 
+  const rateReply = async (recordId, rating) => {
+    try {
+      await axios.post(`${API}/api/rate`, { recordId, rating })
+      load()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   const filtered = comments.filter(c => {
     if (filter === 'pending') return c.Status === 'pending'
     if (filter === 'approved') return c.Status === 'approved'
@@ -346,13 +355,57 @@ export default function CommentQueue() {
               </div>
             )}
 
-            {/* Approved reply */}
-            {(c.Status === 'approved' || c.Status === 'auto_posted') && c.ApprovedReply && (
-              <div style={{
-                padding: '10px 16px', background: '#0d2d1a',
-                fontSize: 13, color: '#1D9E75'
-              }}>
-                Reply: "{c.ApprovedReply}"
+            {/* Approved/Auto-posted reply with rating */}
+            {(c.Status === 'approved' || c.Status === 'auto_posted') && (
+              <div style={{ padding: '12px 16px' }}>
+                <div style={{
+                  background: '#0d2d1a', borderRadius: 8,
+                  padding: '10px 14px', marginBottom: 10
+                }}>
+                  <div style={{ fontSize: 10, fontWeight: 500, color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                    {c.Status === 'auto_posted' ? 'Auto-posted reply' : 'Approved reply'}
+                  </div>
+                  <div style={{ fontSize: 14, color: '#e0ffe0', lineHeight: 1.6 }}>
+                    "{c.ApprovedReply || 'Reply posted on Instagram'}"
+                  </div>
+                </div>
+
+                {c.Status === 'auto_posted' && (
+                  <div>
+                    <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>
+                      Rate this reply — helps train VIBE to get better
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button
+                        onClick={() => rateReply(c.id, 'good')}
+                        style={{
+                          padding: '6px 16px', borderRadius: 20,
+                          background: c.Rating === 'good' ? '#1D9E75' : '#1a1a2e',
+                          color: c.Rating === 'good' ? '#fff' : '#888',
+                          fontSize: 13, cursor: 'pointer', fontWeight: 500,
+                          border: c.Rating === 'good' ? 'none' : '1px solid #2a2a4a'
+                        }}>
+                        Good reply
+                      </button>
+                      <button
+                        onClick={() => rateReply(c.id, 'bad')}
+                        style={{
+                          padding: '6px 16px', borderRadius: 20,
+                          background: c.Rating === 'bad' ? '#E24B4A' : '#1a1a2e',
+                          color: c.Rating === 'bad' ? '#fff' : '#888',
+                          fontSize: 13, cursor: 'pointer', fontWeight: 500,
+                          border: c.Rating === 'bad' ? 'none' : '1px solid #2a2a4a'
+                        }}>
+                        Off brand
+                      </button>
+                      {c.Rating && (
+                        <span style={{ fontSize: 11, color: '#555' }}>
+                          Rated — thanks! VIBE is learning.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -256,7 +256,28 @@ app.post('/api/test-reply', async (req, res) => {
   res.json(result);
 });
 
-// 8. Keep-alive endpoint for cron pings
+// 8. Rate a reply
+app.post('/api/rate', async (req, res) => {
+  const { recordId, rating } = req.body;
+  await base('Comments').update(recordId, { Rating: rating });
+  res.json({ success: true });
+});
+
+// 9. Get top rated replies for training
+app.get('/api/top-replies', async (req, res) => {
+  const records = await base('Comments').select({
+    filterByFormula: `{Rating} = 'good'`,
+    sort: [{ field: 'Timestamp', direction: 'desc' }],
+    maxRecords: 20
+  }).firstPage();
+  res.json(records.map(r => ({
+    comment: r.fields.CommentText,
+    reply: r.fields.ApprovedReply,
+    tone: r.fields.Reply1Tone
+  })));
+});
+
+// 10. Keep-alive endpoint for cron pings
 app.get('/api/ping', (req, res) => {
   res.json({ status: 'alive', timestamp: new Date().toISOString() });
 });
