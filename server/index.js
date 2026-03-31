@@ -393,6 +393,17 @@ setTimeout(pollComments, 3000);
 setInterval(pollComments, 2 * 60 * 1000);
 console.log('🔄 Polling engine started — checking every 2 minutes');
 
+// Keep-alive — prevents Render free tier from sleeping
+const RENDER_URL = 'https://earthrevibe-ai.onrender.com';
+setInterval(async () => {
+  try {
+    await axios.get(`${RENDER_URL}/api/comments?limit=1`);
+    console.log('💓 Keep-alive ping');
+  } catch (e) {
+    // silent
+  }
+}, 4 * 60 * 1000);
+
 // ── Start server ─────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`🚀 Server live on port ${PORT}`));
