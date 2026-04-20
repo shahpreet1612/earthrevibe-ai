@@ -446,8 +446,8 @@ async function refreshToken() {
   }
 }
 
-// Refresh every 50 days
-setInterval(refreshToken, 50 * 24 * 60 * 60 * 1000);
+// Refresh every 24 hours, check if token is older than 45 days
+setInterval(refreshToken, 24 * 60 * 60 * 1000);
 
 // ── Start server ─────────────────────────────────────
 const PORT = process.env.PORT || 3001;
