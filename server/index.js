@@ -85,7 +85,7 @@ AUTO POST RULES:
 - When in doubt — false`;
 
 // ── Generate AI Replies ──────────────────────────────
-async function generateReplies(comment, postCaption, postType, authorName) {
+async function generateReplies(comment, postCaption, postType, authorName, mediaUrl, mediaType) {
 
   const founderNames = ['Abhishek', 'Abhishek Jain', 'earthrevibe'];
   const isFounder = founderNames.some(name =>
@@ -94,7 +94,35 @@ async function generateReplies(comment, postCaption, postType, authorName) {
 
   const founderContext = isFounder ? `
 SPECIAL: This person is Abhishek, Earth Revibe's founder.
-Make it warm and fun — like the brand is excited to see the founder engaging.` : '';
+Make it warm and fun.` : '';
+
+  // If we have an image URL — use vision model to describe it first
+  let imageDescription = '';
+  if (mediaUrl) {
+    try {
+      const visionRes = await groq.chat.completions.create({
+        model: 'llama-3.2-90b-vision-preview',
+        max_tokens: 200,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: mediaUrl }
+            },
+            {
+              type: 'text',
+              text: 'Describe this image in 2-3 sentences focusing on: the clothing/outfit shown, the setting/location, the mood and aesthetic, and any travel vibes. Be specific and visual.'
+            }
+          ]
+        }]
+      });
+      imageDescription = visionRes.choices[0].message.content;
+      console.log('👁️ Image analysed:', imageDescription.substring(0, 80));
+    } catch (e) {
+      console.log('Vision model unavailable, using caption only');
+    }
+  }
 
   const response = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
@@ -103,20 +131,15 @@ Make it warm and fun — like the brand is excited to see the founder engaging.`
       { role: 'system', content: BRAND_PROMPT + founderContext },
       { role: 'user', content: `POST CONTEXT:
 Caption: "${postCaption}"
-Post type: ${postType}
+Post type: ${mediaType || postType}
+${imageDescription ? `Visual description of the post: "${imageDescription}"` : ''}
 
-Based on the caption, infer what this post is likely about:
-- Is it a product shot? A travel photo? A lifestyle reel? A collab?
-- What aesthetic does it convey?
-- What would someone genuinely feel seeing this post?
-
-Use this full context — not just the words, but the FEELING of the post — to craft replies.
+Use ALL this context — the caption, the image description, the overall feeling — to understand what this post is really about before crafting replies.
 
 COMMENT TO REPLY TO: "${comment}"
 Commenter: ${authorName || 'a follower'}
 
-Generate 3 replies that feel like they came from a real person with taste — not a brand bot.
-Return ONLY valid JSON.` }
+Generate 3 replies. Return ONLY valid JSON.` }
     ]
   });
 
@@ -296,7 +319,7 @@ async function pollComments() {
 
     const mediaRes = await axios.get(
       `https://graph.facebook.com/v19.0/${igId}/media` +
-      `?fields=id,caption,timestamp&limit=25&access_token=${token}`
+      `?fields=id,caption,timestamp,permalink,media_type,media_url,thumbnail_url&limit=25&access_token=${token}`
     );
 
     const posts = mediaRes.data?.data || [];
@@ -359,11 +382,14 @@ async function pollComments() {
 
         console.log(`💬 New comment: "${comment.text}" by ${comment.from?.name}`);
 
+        const mediaUrl = post.media_url || post.thumbnail_url || null;
         const aiResult = await generateReplies(
           comment.text,
           post.caption || 'Earth Revibe post',
-          'instagram_post',
-          comment.from?.name || comment.from?.username
+          post.media_type || 'instagram_post',
+          comment.from?.name || comment.from?.username,
+          mediaUrl,
+          post.media_type
         );
 
         await saveComment({
