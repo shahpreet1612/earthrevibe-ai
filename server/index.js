@@ -433,6 +433,22 @@ setInterval(async () => {
   }
 }, 4 * 60 * 1000);
 
+// Auto-refresh token every 50 days
+async function refreshToken() {
+  try {
+    const current = process.env.INSTAGRAM_ACCESS_TOKEN;
+    const url = `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.FB_APP_ID}&client_secret=${process.env.FB_APP_SECRET}&fb_exchange_token=${current}`;
+    const res = await axios.get(url);
+    process.env.INSTAGRAM_ACCESS_TOKEN = res.data.access_token;
+    console.log('🔄 Token auto-refreshed successfully');
+  } catch (e) {
+    console.error('Token refresh failed:', e.message);
+  }
+}
+
+// Refresh every 50 days
+setInterval(refreshToken, 50 * 24 * 60 * 60 * 1000);
+
 // ── Start server ─────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`🚀 Server live on port ${PORT}`));
