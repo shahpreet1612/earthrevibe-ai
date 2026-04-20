@@ -97,7 +97,7 @@ SPECIAL: This person is Abhishek, Earth Revibe's founder.
 Make it warm and fun — like the brand is excited to see the founder engaging.` : '';
 
   const response = await groq.chat.completions.create({
-    model: 'llama-3.1-70b-versatile',
+    model: 'llama-3.3-70b-versatile',
     max_tokens: 1000,
     messages: [
       { role: 'system', content: BRAND_PROMPT + founderContext },
