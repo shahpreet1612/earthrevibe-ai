@@ -414,6 +414,7 @@ async function pollComments() {
     }
   } catch (err) {
     console.error('❌ Poll error:', err.message);
+    console.error('   ↳ Full error:', JSON.stringify(err.response?.data, null, 2));
   }
 }
 
