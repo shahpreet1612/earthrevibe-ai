@@ -240,11 +240,15 @@ app.post('/webhook', async (req, res) => {
 
 // 3. Dashboard — get all pending comments
 app.get('/api/comments', async (req, res) => {
-  const records = await base('Comments').select({
-    sort: [{ field: 'Timestamp', direction: 'desc' }],
-    maxRecords: 100
-  }).firstPage();
-  res.json(records.map(r => ({ id: r.id, ...r.fields })));
+  try {
+    const records = await base('Comments').select({
+      sort: [{ field: 'Timestamp', direction: 'desc' }]
+    }).all();
+    const limited = records.slice(0, 500);
+    res.json(limited.map(r => ({ id: r.id, ...r.fields })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 4. Dashboard — approve and post a reply
