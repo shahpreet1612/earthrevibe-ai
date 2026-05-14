@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area, defs
+  PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts'
 
 const API = 'https://earthrevibe-ai.onrender.com'
