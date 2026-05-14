@@ -8,19 +8,20 @@ import {
 const API = 'https://earthrevibe-ai.onrender.com'
 
 const PALETTE = {
-  olive: '#a8b87c',
-  oliveDeep: '#7e8a5a',
-  terracotta: '#d4815c',
-  gold: '#d4a554',
-  rust: '#b85a3a',
-  cream: '#f5ede0',
-  charcoal: '#0c0b08',
-  border: 'rgba(212, 187, 144, 0.1)',
-  muted: 'rgba(245, 237, 224, 0.32)',
-  text: '#f5ede0',
+  olive: '#7ee5b8',          // mint — primary success
+  oliveDeep: '#5ec99a',
+  terracotta: '#ff8a8a',     // coral — secondary
+  gold: '#ffd166',           // amber — highlight
+  rust: '#e07474',
+  cream: '#f4f4f9',
+  charcoal: '#0a0a14',
+  violet: '#8b87ff',         // primary brand
+  border: 'rgba(139, 135, 255, 0.12)',
+  muted: 'rgba(244, 244, 249, 0.35)',
+  text: '#f4f4f9',
 }
 
-const TONE_COLORS = ['#a8b87c', '#d4815c', '#d4a554', '#7e8a5a', '#b85a3a', '#c8d4a0']
+const TONE_COLORS = ['#8b87ff', '#ff8a8a', '#7ee5b8', '#ffd166', '#b5b2ff', '#ffb38a']
 
 const card = {
   background: 'rgba(245, 237, 224, 0.025)',
@@ -69,9 +70,9 @@ function fmtTime(date) {
 }
 
 function avatarColor(name) {
-  if (!name) return PALETTE.olive
+  if (!name) return PALETTE.violet
   const seed = name.split('').reduce((s, c) => s + c.charCodeAt(0), 0)
-  const colors = [PALETTE.olive, PALETTE.terracotta, PALETTE.gold, PALETTE.oliveDeep, PALETTE.rust]
+  const colors = [PALETTE.violet, PALETTE.terracotta, PALETTE.olive, PALETTE.gold, '#b5b2ff', '#ffb38a']
   return colors[seed % colors.length]
 }
 

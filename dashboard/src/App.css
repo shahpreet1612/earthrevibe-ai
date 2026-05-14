@@ -3,43 +3,54 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Earth Revibe palette — warm linen × travel */
-  --bg-primary: #0c0b08;
-  --bg-secondary: #14110d;
-  --bg-elevated: #1a1612;
-  --bg-card: rgba(245, 237, 224, 0.025);
-  --bg-card-hover: rgba(245, 237, 224, 0.05);
-  --bg-glass: rgba(245, 237, 224, 0.03);
-  --border: rgba(212, 187, 144, 0.08);
-  --border-hover: rgba(212, 187, 144, 0.2);
-  --text-primary: #f5ede0;
-  --text-secondary: rgba(245, 237, 224, 0.6);
-  --text-muted: rgba(245, 237, 224, 0.32);
-  --text-faint: rgba(245, 237, 224, 0.18);
+  /* Midnight Premium — Linear/Vercel/Vision Pro vibe */
+  --bg-primary: #0a0a14;
+  --bg-secondary: #11111d;
+  --bg-elevated: #15152a;
+  --bg-card: rgba(139, 135, 255, 0.04);
+  --bg-card-hover: rgba(139, 135, 255, 0.08);
+  --bg-glass: rgba(255, 255, 255, 0.04);
+  --border: rgba(139, 135, 255, 0.1);
+  --border-hover: rgba(139, 135, 255, 0.22);
+  --text-primary: #f4f4f9;
+  --text-secondary: rgba(244, 244, 249, 0.62);
+  --text-muted: rgba(244, 244, 249, 0.35);
+  --text-faint: rgba(244, 244, 249, 0.2);
 
-  --olive: #a8b87c;
-  --olive-glow: rgba(168, 184, 124, 0.14);
-  --olive-deep: #7e8a5a;
-  --terracotta: #d4815c;
-  --terracotta-glow: rgba(212, 129, 92, 0.14);
-  --gold: #d4a554;
-  --gold-glow: rgba(212, 165, 84, 0.14);
-  --rust: #b85a3a;
-  --rust-glow: rgba(184, 90, 58, 0.14);
-  --cream: #f5ede0;
+  /* Primary palette */
+  --violet: #8b87ff;
+  --violet-glow: rgba(139, 135, 255, 0.18);
+  --violet-deep: #6c63ff;
+  --mint: #7ee5b8;
+  --mint-glow: rgba(126, 229, 184, 0.18);
+  --coral: #ff8a8a;
+  --coral-glow: rgba(255, 138, 138, 0.18);
+  --amber: #ffd166;
+  --amber-glow: rgba(255, 209, 102, 0.18);
 
   /* Semantic */
-  --green: #a8b87c;
-  --green-glow: rgba(168, 184, 124, 0.14);
-  --red: #c75b4c;
-  --red-glow: rgba(199, 91, 76, 0.14);
-  --orange: #d4815c;
-  --orange-glow: rgba(212, 129, 92, 0.14);
-  --blue: #d4a554;
-  --blue-glow: rgba(212, 165, 84, 0.14);
-  --accent: var(--olive);
-  --accent-glow: var(--olive-glow);
-  --accent-light: #c8d4a0;
+  --olive: var(--mint);
+  --olive-glow: var(--mint-glow);
+  --olive-deep: #5ec99a;
+  --terracotta: var(--coral);
+  --terracotta-glow: var(--coral-glow);
+  --gold: var(--amber);
+  --gold-glow: var(--amber-glow);
+  --rust: #e07474;
+  --rust-glow: rgba(224, 116, 116, 0.18);
+  --cream: var(--text-primary);
+
+  --green: var(--mint);
+  --green-glow: var(--mint-glow);
+  --red: #ff7878;
+  --red-glow: rgba(255, 120, 120, 0.18);
+  --orange: var(--coral);
+  --orange-glow: var(--coral-glow);
+  --blue: var(--violet);
+  --blue-glow: var(--violet-glow);
+  --accent: var(--violet);
+  --accent-glow: var(--violet-glow);
+  --accent-light: #b5b2ff;
 }
 
 body {
@@ -53,15 +64,15 @@ body {
 .app {
   min-height: 100vh;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(168, 184, 124, 0.07), transparent 50%),
-    radial-gradient(ellipse 60% 40% at 85% 30%, rgba(212, 129, 92, 0.05), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 15% 80%, rgba(212, 165, 84, 0.04), transparent 60%),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(139, 135, 255, 0.12), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 85% 30%, rgba(255, 138, 138, 0.06), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 15% 80%, rgba(126, 229, 184, 0.05), transparent 60%),
     var(--bg-primary);
 }
 
 /* ── Header ────────────────────────────── */
 .header {
-  background: rgba(12, 11, 8, 0.75);
+  background: rgba(10, 10, 20, 0.75);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-bottom: 1px solid var(--border);
@@ -84,16 +95,16 @@ body {
 .brand-mark {
   width: 36px; height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--olive), var(--terracotta) 70%, var(--gold));
+  background: linear-gradient(135deg, var(--violet) 0%, var(--coral) 60%, var(--amber) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Cormorant Garamond', serif;
   font-weight: 600;
   font-size: 18px;
-  color: var(--cream);
+  color: #fff;
   letter-spacing: -0.5px;
-  box-shadow: 0 4px 16px rgba(168, 184, 124, 0.2);
+  box-shadow: 0 4px 16px rgba(139, 135, 255, 0.3);
 }
 
 .brand-text {
@@ -104,7 +115,10 @@ body {
   font-family: 'Cormorant Garamond', serif;
   font-size: 24px;
   font-weight: 600;
-  color: var(--cream);
+  background: linear-gradient(135deg, var(--violet), var(--coral) 80%, var(--amber));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   letter-spacing: -0.5px;
   line-height: 1;
 }
@@ -121,7 +135,7 @@ body {
 .nav {
   display: flex;
   gap: 4px;
-  background: rgba(245, 237, 224, 0.03);
+  background: rgba(255, 255, 255, 0.03);
   padding: 5px;
   border-radius: 14px;
   border: 1px solid var(--border);
@@ -143,37 +157,37 @@ body {
 
 .nav-btn:hover {
   color: var(--text-primary);
-  background: rgba(245, 237, 224, 0.04);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .nav-btn.active {
-  background: linear-gradient(135deg, rgba(168, 184, 124, 0.18), rgba(212, 165, 84, 0.08));
+  background: linear-gradient(135deg, rgba(139, 135, 255, 0.22), rgba(255, 138, 138, 0.1));
   color: var(--accent-light);
-  box-shadow: 0 0 20px rgba(168, 184, 124, 0.1);
-  border: 1px solid rgba(168, 184, 124, 0.2);
+  box-shadow: 0 0 24px rgba(139, 135, 255, 0.15);
+  border: 1px solid rgba(139, 135, 255, 0.28);
 }
 
 /* ── Live indicator ───────────────────── */
 .live-dot {
   width: 8px;
   height: 8px;
-  background: var(--olive);
+  background: var(--mint);
   border-radius: 50%;
   margin-right: 8px;
-  box-shadow: 0 0 8px rgba(168, 184, 124, 0.7);
+  box-shadow: 0 0 10px rgba(126, 229, 184, 0.7);
   animation: pulse 2s ease-in-out infinite;
 }
 
 .live-text {
   font-size: 11px;
-  color: var(--olive);
+  color: var(--mint);
   font-weight: 600;
   letter-spacing: 0.15em;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(168, 184, 124, 0.7); }
-  50% { opacity: 0.4; box-shadow: 0 0 16px rgba(168, 184, 124, 0.3); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(126, 229, 184, 0.7); }
+  50% { opacity: 0.4; box-shadow: 0 0 20px rgba(126, 229, 184, 0.3); }
 }
 
 /* ── Main ──────────────────────────────── */
@@ -207,8 +221,8 @@ body {
 /* ── Scrollbar ─────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(212, 187, 144, 0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(212, 187, 144, 0.2); }
+::-webkit-scrollbar-thumb { background: rgba(139, 135, 255, 0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(139, 135, 255, 0.3); }
 
 /* ── Reusable utilities ─────────────────── */
 .serif { font-family: 'Cormorant Garamond', serif; }
