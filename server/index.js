@@ -320,6 +320,9 @@ async function pollComments() {
   try {
     const igId = process.env.INSTAGRAM_PAGE_ID;
     const token = process.env.INSTAGRAM_ACCESS_TOKEN;
+    const OUR_ID = process.env.INSTAGRAM_PAGE_ID;
+
+    console.log(`🔧 Polling with IG_ID=${igId}, OUR_ID=${OUR_ID}, token=${token?.substring(0,10)}...`);
 
     const mediaRes = await axios.get(
       `https://graph.facebook.com/v19.0/${igId}/media` +
@@ -327,16 +330,17 @@ async function pollComments() {
     );
 
     const posts = mediaRes.data?.data || [];
+    console.log(`📄 Fetched ${posts.length} posts from Instagram`);
     console.log(`🔍 Checking ${posts.length} posts for new comments...`);
 
     for (const post of posts) {
+      console.log(`📝 Processing post ${post.id} - caption: "${post.caption?.substring(0,40)}..."`);
       const commentsRes = await axios.get(
         `https://graph.facebook.com/v19.0/${post.id}/comments` +
         `?fields=id,text,from,timestamp,replies{id,text,from,timestamp}&access_token=${token}`
       );
 
       const comments = commentsRes.data?.data || [];
-      const OUR_ID = process.env.INSTAGRAM_PAGE_ID;
       const allComments = [];
 
       for (const comment of comments) {
@@ -355,8 +359,15 @@ async function pollComments() {
         }
       }
 
+      console.log(`💬 Found ${allComments.length} comments on this post (after own-filter)`);
+
       for (const comment of allComments) {
-        if (processedComments.has(comment.id)) continue;
+        console.log(`🔍 Checking comment ${comment.id} by ${comment.from?.username || comment.from?.id}: "${comment.text?.substring(0,40)}"`);
+
+        if (processedComments.has(comment.id)) {
+          console.log(`⏭️  Skipping ${comment.id} - already in processedComments cache`);
+          continue;
+        }
         processedComments.add(comment.id);
 
         // Check Airtable — skip if already processed
@@ -365,7 +376,10 @@ async function pollComments() {
           maxRecords: 1
         }).firstPage();
 
-        if (existing.length > 0) continue;
+        if (existing.length > 0) {
+          console.log(`⏭️  Skipping ${comment.id} - already in Airtable`);
+          continue;
+        }
 
         // Check if we already replied on Instagram
         let alreadyReplied = false;
@@ -384,31 +398,51 @@ async function pollComments() {
           continue;
         }
 
+        console.log(`✨ NEW COMMENT - processing ${comment.id}: "${comment.text}"`);
         console.log(`💬 New comment: "${comment.text}" by ${comment.from?.name}`);
 
         const mediaUrl = post.media_url || post.thumbnail_url || null;
-        const aiResult = await generateReplies(
-          comment.text,
-          post.caption || 'Earth Revibe post',
-          post.media_type || 'instagram_post',
-          comment.from?.name || comment.from?.username,
-          mediaUrl,
-          post.media_type
-        );
+        console.log(`🤖 Calling generateReplies for ${comment.id}`);
+        let aiResult;
+        try {
+          aiResult = await generateReplies(
+            comment.text,
+            post.caption || 'Earth Revibe post',
+            post.media_type || 'instagram_post',
+            comment.from?.name || comment.from?.username,
+            mediaUrl,
+            post.media_type
+          );
+          console.log(`✅ AI returned: intent=${aiResult.intent}, auto_post_safe=${aiResult.auto_post_safe}`);
+        } catch (err) {
+          console.error(`❌ generateReplies failed for ${comment.id}:`, err.message);
+          continue;
+        }
 
-        await saveComment({
-          commentId:   comment.id,
-          commentText: comment.text,
-          authorName:  comment.from?.name || comment.from?.username || 'Instagram User',
-          postCaption: post.caption || 'Earth Revibe post',
-          postType:    'instagram_post',
-          aiResult
-        });
+        try {
+          await saveComment({
+            commentId:   comment.id,
+            commentText: comment.text,
+            authorName:  comment.from?.name || comment.from?.username || 'Instagram User',
+            postCaption: post.caption || 'Earth Revibe post',
+            postType:    'instagram_post',
+            aiResult
+          });
+          console.log(`💾 Saved ${comment.id} to Airtable`);
+        } catch (err) {
+          console.error(`❌ saveComment failed for ${comment.id}:`, err.message);
+          continue;
+        }
 
         if (aiResult.auto_post_safe) {
           const best = aiResult.replies[aiResult.best_reply_index].reply;
-          await postReply(comment.id, best);
-          console.log(`✅ Auto-posted: "${best}"`);
+          try {
+            await postReply(comment.id, best);
+            console.log(`✅ Auto-posted: "${best}"`);
+          } catch (err) {
+            console.error(`❌ postReply failed for ${comment.id}:`, err.message);
+            console.error('   ↳ Full error:', JSON.stringify(err.response?.data, null, 2));
+          }
         } else {
           console.log(`📋 Queued for approval — intent: ${aiResult.intent}`);
         }
@@ -426,6 +460,7 @@ async function pollComments() {
 setTimeout(pollComments, 3000);
 setInterval(pollComments, 2 * 60 * 1000);
 console.log('🔄 Polling engine started — checking every 2 minutes');
+console.log(`🆔 OUR_ID configured as: ${process.env.INSTAGRAM_PAGE_ID}`);
 
 // Keep-alive — prevents Render free tier from sleeping
 const RENDER_URL = 'https://earthrevibe-ai.onrender.com';
