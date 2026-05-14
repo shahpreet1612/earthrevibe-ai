@@ -240,13 +240,23 @@ app.post('/webhook', async (req, res) => {
 
 // 3. Dashboard — get all pending comments
 app.get('/api/comments', async (req, res) => {
+  const t0 = Date.now();
   try {
-    const records = await base('Comments').select({
-      sort: [{ field: 'Timestamp', direction: 'desc' }]
-    }).all();
-    const limited = records.slice(0, 500);
+    const limit = Math.min(parseInt(req.query.limit) || 500, 1000);
+    const records = [];
+    await base('Comments').select({
+      sort: [{ field: 'Timestamp', direction: 'desc' }],
+      pageSize: 100
+    }).eachPage((pageRecords, fetchNextPage) => {
+      records.push(...pageRecords);
+      if (records.length >= limit) return; // stop pagination once we have enough
+      fetchNextPage();
+    });
+    const limited = records.slice(0, limit);
+    console.log(`📥 /api/comments → ${limited.length} records in ${Date.now() - t0}ms`);
     res.json(limited.map(r => ({ id: r.id, ...r.fields })));
   } catch (err) {
+    console.error(`❌ /api/comments failed in ${Date.now() - t0}ms:`, err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -362,50 +372,49 @@ async function pollComments() {
       console.log(`💬 Found ${allComments.length} comments on this post (after own-filter)`);
 
       for (const comment of allComments) {
-        console.log(`🔍 Checking comment ${comment.id} by ${comment.from?.username || comment.from?.id}: "${comment.text?.substring(0,40)}"`);
-
-        if (processedComments.has(comment.id)) {
-          console.log(`⏭️  Skipping ${comment.id} - already in processedComments cache`);
-          continue;
-        }
-        processedComments.add(comment.id);
-
-        // Check Airtable — skip if already processed
-        const existing = await base('Comments').select({
-          filterByFormula: `{CommentID} = '${comment.id}'`,
-          maxRecords: 1
-        }).firstPage();
-
-        if (existing.length > 0) {
-          console.log(`⏭️  Skipping ${comment.id} - already in Airtable`);
-          continue;
-        }
-
-        // Check if we already replied on Instagram
-        let alreadyReplied = false;
         try {
-          const repliesCheck = await axios.get(
-            `https://graph.facebook.com/v19.0/${comment.id}/replies` +
-            `?fields=from{id}&access_token=${token}`
-          );
-          alreadyReplied = (repliesCheck.data?.data || []).some(
-            r => r.from?.id === OUR_ID
-          );
-        } catch (e) { /* no replies endpoint = top level, proceed */ }
+          console.log(`🔍 Checking comment ${comment.id} by ${comment.from?.username || comment.from?.id}: "${comment.text?.substring(0,40)}"`);
 
-        if (alreadyReplied) {
-          console.log(`⏭️ Already replied to "${comment.text?.substring(0,30)}..." — skipping`);
-          continue;
-        }
+          if (processedComments.has(comment.id)) {
+            console.log(`⏭️  Skipping ${comment.id} - already in processedComments cache`);
+            continue;
+          }
 
-        console.log(`✨ NEW COMMENT - processing ${comment.id}: "${comment.text}"`);
-        console.log(`💬 New comment: "${comment.text}" by ${comment.from?.name}`);
+          // Check Airtable — skip if already processed
+          const existing = await base('Comments').select({
+            filterByFormula: `{CommentID} = '${comment.id}'`,
+            maxRecords: 1
+          }).firstPage();
 
-        const mediaUrl = post.media_url || post.thumbnail_url || null;
-        console.log(`🤖 Calling generateReplies for ${comment.id}`);
-        let aiResult;
-        try {
-          aiResult = await generateReplies(
+          if (existing.length > 0) {
+            console.log(`⏭️  Skipping ${comment.id} - already in Airtable`);
+            processedComments.add(comment.id);
+            continue;
+          }
+
+          // Check if we already replied on Instagram
+          let alreadyReplied = false;
+          try {
+            const repliesCheck = await axios.get(
+              `https://graph.facebook.com/v19.0/${comment.id}/replies` +
+              `?fields=from{id}&access_token=${token}`
+            );
+            alreadyReplied = (repliesCheck.data?.data || []).some(
+              r => r.from?.id === OUR_ID
+            );
+          } catch (e) { /* no replies endpoint = top level, proceed */ }
+
+          if (alreadyReplied) {
+            console.log(`⏭️ Already replied to "${comment.text?.substring(0,30)}..." — skipping`);
+            processedComments.add(comment.id);
+            continue;
+          }
+
+          console.log(`✨ NEW COMMENT - processing ${comment.id}: "${comment.text}"`);
+
+          const mediaUrl = post.media_url || post.thumbnail_url || null;
+          console.log(`🤖 Calling generateReplies for ${comment.id}`);
+          const aiResult = await generateReplies(
             comment.text,
             post.caption || 'Earth Revibe post',
             post.media_type || 'instagram_post',
@@ -414,12 +423,7 @@ async function pollComments() {
             post.media_type
           );
           console.log(`✅ AI returned: intent=${aiResult.intent}, auto_post_safe=${aiResult.auto_post_safe}`);
-        } catch (err) {
-          console.error(`❌ generateReplies failed for ${comment.id}:`, err.message);
-          continue;
-        }
 
-        try {
           await saveComment({
             commentId:   comment.id,
             commentText: comment.text,
@@ -429,25 +433,29 @@ async function pollComments() {
             aiResult
           });
           console.log(`💾 Saved ${comment.id} to Airtable`);
-        } catch (err) {
-          console.error(`❌ saveComment failed for ${comment.id}:`, err.message);
-          continue;
-        }
 
-        if (aiResult.auto_post_safe) {
-          const best = aiResult.replies[aiResult.best_reply_index].reply;
-          try {
-            await postReply(comment.id, best);
-            console.log(`✅ Auto-posted: "${best}"`);
-          } catch (err) {
-            console.error(`❌ postReply failed for ${comment.id}:`, err.message);
-            console.error('   ↳ Full error:', JSON.stringify(err.response?.data, null, 2));
+          if (aiResult.auto_post_safe) {
+            const best = aiResult.replies[aiResult.best_reply_index].reply;
+            try {
+              await postReply(comment.id, best);
+              console.log(`✅ Auto-posted: "${best}"`);
+            } catch (postErr) {
+              console.error(`❌ postReply failed for ${comment.id}:`, postErr.message);
+              console.error('   ↳ Full error:', JSON.stringify(postErr.response?.data, null, 2));
+            }
+          } else {
+            console.log(`📋 Queued for approval — intent: ${aiResult.intent}`);
           }
-        } else {
-          console.log(`📋 Queued for approval — intent: ${aiResult.intent}`);
-        }
 
-        await new Promise(r => setTimeout(r, 3000));
+          // Only mark as processed AFTER full success — failure = retry next cycle
+          processedComments.add(comment.id);
+          await new Promise(r => setTimeout(r, 3000));
+        } catch (commentErr) {
+          // Per-comment safety net: one bad comment does NOT kill the whole poll cycle
+          console.error(`❌ Failed to process comment ${comment.id}: ${commentErr.message}`);
+          console.error('   ↳ Full error:', JSON.stringify(commentErr.response?.data, null, 2));
+          // Intentionally NOT adding to processedComments — will retry next cycle
+        }
       }
     }
   } catch (err) {
