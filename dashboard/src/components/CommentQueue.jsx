@@ -4,7 +4,7 @@ import axios from 'axios'
 const API = 'https://earthrevibe-ai.onrender.com'
 
 const priorityColor = {
-  urgent: '#E24B4A', high: '#EF9F27', normal: '#1D9E75', skip: '#666'
+  urgent: '#c75b4c', high: '#d4815c', normal: '#a8b87c', skip: '#7e7367'
 }
 const intentEmoji = {
   hype: '🔥', question_price: '💰', question_buy: '🛒',
@@ -95,19 +95,30 @@ export default function CommentQueue() {
   return (
     <div>
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
         {[
-          { label: 'Pending Approval', value: counts.pending, color: '#534AB7' },
-          { label: 'Urgent / High', value: counts.urgent, color: '#E24B4A' },
-          { label: 'Auto-Posted', value: counts.auto, color: '#1D9E75' },
-          { label: 'Total Logged', value: comments.length, color: '#888' },
-        ].map(s => (
+          { label: 'Pending Approval', value: counts.pending, color: '#d4a554', tint: 'rgba(212, 165, 84, 0.08)' },
+          { label: 'Urgent / High', value: counts.urgent, color: '#c75b4c', tint: 'rgba(199, 91, 76, 0.08)' },
+          { label: 'Auto-Posted', value: counts.auto, color: '#a8b87c', tint: 'rgba(168, 184, 124, 0.08)' },
+          { label: 'Total Logged', value: comments.length, color: '#f5ede0', tint: 'rgba(245, 237, 224, 0.04)' },
+        ].map((s, i) => (
           <div key={s.label} style={{
-            background: '#1a1a2e', borderRadius: 10,
-            padding: '14px 16px', border: '1px solid #2a2a4a'
+            background: `linear-gradient(135deg, ${s.tint}, rgba(245, 237, 224, 0.015))`,
+            borderRadius: 14,
+            padding: '18px 20px',
+            border: '1px solid rgba(212, 187, 144, 0.08)',
+            backdropFilter: 'blur(20px)',
+            animation: `slideUp 0.5s ease-out ${i * 0.08}s backwards`,
           }}>
-            <div style={{ fontSize: 28, fontWeight: 600, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{s.label}</div>
+            <div className="num" style={{
+              fontSize: 34, fontWeight: 700, color: s.color,
+              letterSpacing: '-1px', lineHeight: 1,
+            }}>{s.value}</div>
+            <div style={{
+              fontSize: 11, color: 'rgba(245, 237, 224, 0.4)',
+              marginTop: 8, fontWeight: 500,
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+            }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -117,11 +128,16 @@ export default function CommentQueue() {
         {['pending','urgent','auto','approved','all'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
             style={{
-              padding: '6px 14px', borderRadius: 20,
+              padding: '7px 16px', borderRadius: 20,
               fontSize: 12, fontWeight: 500, cursor: 'pointer',
-              background: filter === f ? '#534AB7' : '#1a1a2e',
-              color: filter === f ? '#fff' : '#888',
-              border: filter === f ? 'none' : '1px solid #2a2a4a'
+              background: filter === f
+                ? 'linear-gradient(135deg, rgba(168, 184, 124, 0.18), rgba(212, 165, 84, 0.08))'
+                : 'rgba(245, 237, 224, 0.025)',
+              color: filter === f ? '#c8d4a0' : 'rgba(245, 237, 224, 0.5)',
+              border: filter === f
+                ? '1px solid rgba(168, 184, 124, 0.25)'
+                : '1px solid rgba(212, 187, 144, 0.08)',
+              transition: 'all 0.2s ease',
             }}>
             {f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
@@ -131,9 +147,10 @@ export default function CommentQueue() {
       {/* Notice for pending */}
       {filter === 'pending' && counts.pending > 0 && (
         <div style={{
-          background: '#1a1a2e', border: '1px solid #534AB7',
-          borderRadius: 8, padding: '10px 14px', marginBottom: 16,
-          fontSize: 12, color: '#9990dd'
+          background: 'rgba(212, 165, 84, 0.06)',
+          border: '1px solid rgba(212, 165, 84, 0.2)',
+          borderRadius: 10, padding: '10px 14px', marginBottom: 16,
+          fontSize: 12, color: '#d4a554'
         }}>
           Click "Copy & Mark Done" then paste it as a reply on Instagram. Auto-posting will be live after Meta approves the app (2-3 days).
         </div>

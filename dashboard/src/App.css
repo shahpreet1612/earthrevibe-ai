@@ -1,29 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #12121a;
-  --bg-card: rgba(255, 255, 255, 0.03);
-  --bg-card-hover: rgba(255, 255, 255, 0.06);
-  --bg-glass: rgba(255, 255, 255, 0.04);
-  --border: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(255, 255, 255, 0.12);
-  --text-primary: #f0f0f5;
-  --text-secondary: rgba(255, 255, 255, 0.5);
-  --text-muted: rgba(255, 255, 255, 0.3);
-  --accent: #7c5cfc;
-  --accent-glow: rgba(124, 92, 252, 0.15);
-  --accent-light: #a78bfa;
-  --green: #34d399;
-  --green-glow: rgba(52, 211, 153, 0.12);
-  --red: #f87171;
-  --red-glow: rgba(248, 113, 113, 0.12);
-  --orange: #fbbf24;
-  --orange-glow: rgba(251, 191, 36, 0.12);
-  --blue: #60a5fa;
-  --blue-glow: rgba(96, 165, 250, 0.12);
+  /* Earth Revibe palette — warm linen × travel */
+  --bg-primary: #0c0b08;
+  --bg-secondary: #14110d;
+  --bg-elevated: #1a1612;
+  --bg-card: rgba(245, 237, 224, 0.025);
+  --bg-card-hover: rgba(245, 237, 224, 0.05);
+  --bg-glass: rgba(245, 237, 224, 0.03);
+  --border: rgba(212, 187, 144, 0.08);
+  --border-hover: rgba(212, 187, 144, 0.2);
+  --text-primary: #f5ede0;
+  --text-secondary: rgba(245, 237, 224, 0.6);
+  --text-muted: rgba(245, 237, 224, 0.32);
+  --text-faint: rgba(245, 237, 224, 0.18);
+
+  --olive: #a8b87c;
+  --olive-glow: rgba(168, 184, 124, 0.14);
+  --olive-deep: #7e8a5a;
+  --terracotta: #d4815c;
+  --terracotta-glow: rgba(212, 129, 92, 0.14);
+  --gold: #d4a554;
+  --gold-glow: rgba(212, 165, 84, 0.14);
+  --rust: #b85a3a;
+  --rust-glow: rgba(184, 90, 58, 0.14);
+  --cream: #f5ede0;
+
+  /* Semantic */
+  --green: #a8b87c;
+  --green-glow: rgba(168, 184, 124, 0.14);
+  --red: #c75b4c;
+  --red-glow: rgba(199, 91, 76, 0.14);
+  --orange: #d4815c;
+  --orange-glow: rgba(212, 129, 92, 0.14);
+  --blue: #d4a554;
+  --blue-glow: rgba(212, 165, 84, 0.14);
+  --accent: var(--olive);
+  --accent-glow: var(--olive-glow);
+  --accent-light: #c8d4a0;
 }
 
 body {
@@ -37,20 +53,20 @@ body {
 .app {
   min-height: 100vh;
   background:
-    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124, 92, 252, 0.08), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(52, 211, 153, 0.04), transparent),
-    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(248, 113, 113, 0.03), transparent),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(168, 184, 124, 0.07), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 85% 30%, rgba(212, 129, 92, 0.05), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 15% 80%, rgba(212, 165, 84, 0.04), transparent 60%),
     var(--bg-primary);
 }
 
 /* ── Header ────────────────────────────── */
 .header {
-  background: rgba(10, 10, 15, 0.8);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(12, 11, 8, 0.75);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-bottom: 1px solid var(--border);
-  padding: 0 32px;
-  height: 64px;
+  padding: 0 36px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -62,39 +78,57 @@ body {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 14px;
+}
+
+.brand-mark {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--olive), var(--terracotta) 70%, var(--gold));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--cream);
+  letter-spacing: -0.5px;
+  box-shadow: 0 4px 16px rgba(168, 184, 124, 0.2);
+}
+
+.brand-text {
+  display: flex; flex-direction: column;
 }
 
 .logo {
-  font-size: 20px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #7c5cfc, #a78bfa, #c4b5fd);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--cream);
   letter-spacing: -0.5px;
+  line-height: 1;
 }
 
 .logo-sub {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--text-muted);
-  margin-left: 10px;
+  margin-top: 3px;
   font-weight: 400;
-  letter-spacing: 0.5px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
 }
 
 .nav {
   display: flex;
   gap: 4px;
-  background: rgba(255, 255, 255, 0.03);
-  padding: 4px;
-  border-radius: 12px;
+  background: rgba(245, 237, 224, 0.03);
+  padding: 5px;
+  border-radius: 14px;
   border: 1px solid var(--border);
 }
 
 .nav-btn {
-  padding: 8px 20px;
+  padding: 9px 22px;
   border-radius: 10px;
   border: none;
   background: none;
@@ -104,48 +138,48 @@ body {
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: 'Inter', sans-serif;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.1px;
 }
 
 .nav-btn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(245, 237, 224, 0.04);
 }
 
 .nav-btn.active {
-  background: linear-gradient(135deg, rgba(124, 92, 252, 0.2), rgba(167, 139, 250, 0.1));
+  background: linear-gradient(135deg, rgba(168, 184, 124, 0.18), rgba(212, 165, 84, 0.08));
   color: var(--accent-light);
-  box-shadow: 0 0 20px rgba(124, 92, 252, 0.1);
-  border: 1px solid rgba(124, 92, 252, 0.2);
+  box-shadow: 0 0 20px rgba(168, 184, 124, 0.1);
+  border: 1px solid rgba(168, 184, 124, 0.2);
 }
 
 /* ── Live indicator ───────────────────── */
 .live-dot {
   width: 8px;
   height: 8px;
-  background: var(--green);
+  background: var(--olive);
   border-radius: 50%;
-  margin-right: 6px;
-  box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+  margin-right: 8px;
+  box-shadow: 0 0 8px rgba(168, 184, 124, 0.7);
   animation: pulse 2s ease-in-out infinite;
 }
 
 .live-text {
   font-size: 11px;
-  color: var(--green);
-  font-weight: 500;
-  letter-spacing: 0.1em;
+  color: var(--olive);
+  font-weight: 600;
+  letter-spacing: 0.15em;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(52, 211, 153, 0.6); }
-  50% { opacity: 0.4; box-shadow: 0 0 16px rgba(52, 211, 153, 0.3); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(168, 184, 124, 0.7); }
+  50% { opacity: 0.4; box-shadow: 0 0 16px rgba(168, 184, 124, 0.3); }
 }
 
 /* ── Main ──────────────────────────────── */
 .main {
-  padding: 32px;
-  max-width: 1200px;
+  padding: 32px 36px 48px;
+  max-width: 1280px;
   margin: 0 auto;
   animation: fadeIn 0.4s ease-out;
 }
@@ -160,8 +194,22 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 /* ── Scrollbar ─────────────────────────── */
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
+::-webkit-scrollbar-thumb { background: rgba(212, 187, 144, 0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(212, 187, 144, 0.2); }
+
+/* ── Reusable utilities ─────────────────── */
+.serif { font-family: 'Cormorant Garamond', serif; }
+.num { font-family: 'Manrope', sans-serif; font-variant-numeric: tabular-nums; }
