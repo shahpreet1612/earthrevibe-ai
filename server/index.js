@@ -16,6 +16,15 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY })
   .base(process.env.AIRTABLE_BASE_ID);
 
+// Generic timeout wrapper — prevents any external call from hanging the event loop
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 // ── Master Brand Voice Prompt ────────────────────────
 const BRAND_PROMPT = `You are the social media voice of Earth Revibe — a premium young Indian travel fashion brand. We make clothes for people who actually go places.
 
@@ -96,40 +105,45 @@ async function generateReplies(comment, postCaption, postType, authorName, media
 SPECIAL: This person is Abhishek, Earth Revibe's founder.
 Make it warm and fun.` : '';
 
-  // If we have an image URL — use vision model to describe it first
+  // If we have an image URL — use vision model to describe it first (10s timeout)
   let imageDescription = '';
   if (mediaUrl) {
     try {
-      const visionRes = await groq.chat.completions.create({
-        model: 'llama-3.2-90b-vision-preview',
-        max_tokens: 200,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: { url: mediaUrl }
-            },
-            {
-              type: 'text',
-              text: 'Describe this image in 2-3 sentences focusing on: the clothing/outfit shown, the setting/location, the mood and aesthetic, and any travel vibes. Be specific and visual.'
-            }
-          ]
-        }]
-      });
+      const visionRes = await withTimeout(
+        groq.chat.completions.create({
+          model: 'llama-3.2-90b-vision-preview',
+          max_tokens: 200,
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: { url: mediaUrl }
+              },
+              {
+                type: 'text',
+                text: 'Describe this image in 2-3 sentences focusing on: the clothing/outfit shown, the setting/location, the mood and aesthetic, and any travel vibes. Be specific and visual.'
+              }
+            ]
+          }]
+        }),
+        10000,
+        'Groq vision'
+      );
       imageDescription = visionRes.choices[0].message.content;
       console.log('👁️ Image analysed:', imageDescription.substring(0, 80));
     } catch (e) {
-      console.log('Vision model unavailable, using caption only');
+      console.log(`Vision unavailable (${e.message}), using caption only`);
     }
   }
 
-  const response = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
-    max_tokens: 1000,
-    messages: [
-      { role: 'system', content: BRAND_PROMPT + founderContext },
-      { role: 'user', content: `POST CONTEXT:
+  const response = await withTimeout(
+    groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 1000,
+      messages: [
+        { role: 'system', content: BRAND_PROMPT + founderContext },
+        { role: 'user', content: `POST CONTEXT:
 Caption: "${postCaption}"
 Post type: ${mediaType || postType}
 ${imageDescription ? `Visual description of the post: "${imageDescription}"` : ''}
@@ -140,8 +154,11 @@ COMMENT TO REPLY TO: "${comment}"
 Commenter: ${authorName || 'a follower'}
 
 Generate 3 replies. Return ONLY valid JSON.` }
-    ]
-  });
+      ]
+    }),
+    15000,
+    'Groq text generation'
+  );
 
   const raw = response.choices[0].message.content
     .trim()
@@ -243,18 +260,16 @@ app.get('/api/comments', async (req, res) => {
   const t0 = Date.now();
   try {
     const limit = Math.min(parseInt(req.query.limit) || 500, 1000);
-    const records = [];
-    await base('Comments').select({
-      sort: [{ field: 'Timestamp', direction: 'desc' }],
-      pageSize: 100
-    }).eachPage((pageRecords, fetchNextPage) => {
-      records.push(...pageRecords);
-      if (records.length >= limit) return; // stop pagination once we have enough
-      fetchNextPage();
-    });
-    const limited = records.slice(0, limit);
-    console.log(`📥 /api/comments → ${limited.length} records in ${Date.now() - t0}ms`);
-    res.json(limited.map(r => ({ id: r.id, ...r.fields })));
+    const records = await withTimeout(
+      base('Comments').select({
+        sort: [{ field: 'Timestamp', direction: 'desc' }],
+        maxRecords: limit
+      }).all(),
+      20000,
+      'Airtable /api/comments'
+    );
+    console.log(`📥 /api/comments → ${records.length} records in ${Date.now() - t0}ms`);
+    res.json(records.map(r => ({ id: r.id, ...r.fields })));
   } catch (err) {
     console.error(`❌ /api/comments failed in ${Date.now() - t0}ms:`, err.message);
     res.status(500).json({ error: err.message });
@@ -336,7 +351,8 @@ async function pollComments() {
 
     const mediaRes = await axios.get(
       `https://graph.facebook.com/v19.0/${igId}/media` +
-      `?fields=id,caption,timestamp,permalink,media_type,media_url,thumbnail_url&limit=25&access_token=${token}`
+      `?fields=id,caption,timestamp,permalink,media_type,media_url,thumbnail_url&limit=25&access_token=${token}`,
+      { timeout: 15000 }
     );
 
     const posts = mediaRes.data?.data || [];
@@ -347,7 +363,8 @@ async function pollComments() {
       console.log(`📝 Processing post ${post.id} - caption: "${post.caption?.substring(0,40)}..."`);
       const commentsRes = await axios.get(
         `https://graph.facebook.com/v19.0/${post.id}/comments` +
-        `?fields=id,text,from,timestamp,replies{id,text,from,timestamp}&access_token=${token}`
+        `?fields=id,text,from,timestamp,replies{id,text,from,timestamp}&access_token=${token}`,
+        { timeout: 12000 }
       );
 
       const comments = commentsRes.data?.data || [];
@@ -380,11 +397,15 @@ async function pollComments() {
             continue;
           }
 
-          // Check Airtable — skip if already processed
-          const existing = await base('Comments').select({
-            filterByFormula: `{CommentID} = '${comment.id}'`,
-            maxRecords: 1
-          }).firstPage();
+          // Check Airtable — skip if already processed (hard 10s timeout)
+          const existing = await withTimeout(
+            base('Comments').select({
+              filterByFormula: `{CommentID} = '${comment.id}'`,
+              maxRecords: 1
+            }).firstPage(),
+            10000,
+            'Airtable dup check'
+          );
 
           if (existing.length > 0) {
             console.log(`⏭️  Skipping ${comment.id} - already in Airtable`);
@@ -392,12 +413,13 @@ async function pollComments() {
             continue;
           }
 
-          // Check if we already replied on Instagram
+          // Check if we already replied on Instagram (8s timeout)
           let alreadyReplied = false;
           try {
             const repliesCheck = await axios.get(
               `https://graph.facebook.com/v19.0/${comment.id}/replies` +
-              `?fields=from{id}&access_token=${token}`
+              `?fields=from{id}&access_token=${token}`,
+              { timeout: 8000 }
             );
             alreadyReplied = (repliesCheck.data?.data || []).some(
               r => r.from?.id === OUR_ID
@@ -424,20 +446,20 @@ async function pollComments() {
           );
           console.log(`✅ AI returned: intent=${aiResult.intent}, auto_post_safe=${aiResult.auto_post_safe}`);
 
-          await saveComment({
+          await withTimeout(saveComment({
             commentId:   comment.id,
             commentText: comment.text,
             authorName:  comment.from?.name || comment.from?.username || 'Instagram User',
             postCaption: post.caption || 'Earth Revibe post',
             postType:    'instagram_post',
             aiResult
-          });
+          }), 12000, 'Airtable save');
           console.log(`💾 Saved ${comment.id} to Airtable`);
 
           if (aiResult.auto_post_safe) {
             const best = aiResult.replies[aiResult.best_reply_index].reply;
             try {
-              await postReply(comment.id, best);
+              await withTimeout(postReply(comment.id, best), 10000, 'IG postReply');
               console.log(`✅ Auto-posted: "${best}"`);
             } catch (postErr) {
               console.error(`❌ postReply failed for ${comment.id}:`, postErr.message);
